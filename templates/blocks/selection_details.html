@@ -1,4 +1,4 @@
-<div id="selection-details" ng-controller="AsteroidDetailsCtrl" ng-show="asteroid != null" ng-init="Init()" ng-cloak>
+<div id="selection-details" ng-controller="AsteroidDetailsCtrl" ng-show="asteroid != null" ng-init="init()" ng-cloak>
   <h3 ng-bind="asteroid.full_name"></h3>
   <p ng-show="stats.length < 1">
     Please be patient as data is loaded from JPL...
@@ -35,23 +35,24 @@
     </div>
     {% raw %}
     <div style="margin-bottom: 15px">
-      <div id="imagery" ng-show="!asteroid.custom_object">
+      <div id="imagery" ng-show="!asteroid.custom_object" ng-init="ssControls={}">
         <h4>Imagery from NEAT sky survey</h4>
-        <div ng-show="images.length > 0">
+        <div ng-show="images.length > 0" ng-controller="SlideShowCtrl" slide-show-controls="ssControls" slide-show-for="images">
           <div class="btn-group">
-            <button class="btn" type="button" ng-click="prevImage()" title="Prev"><i class="icon-step-backward"></i></button>
-            <button class="btn" type="button" ng-click="startBlinking()" title="Play" ng-show="!blinkData.blinkingNow"><i class="icon-play"></i></button>
-            <button class="btn" type="button" ng-click="stopBlinking()" title="Stop" ng-show="blinkData.blinkingNow"><i class="icon-stop"></i></button>
-            <button class="btn" type="button" ng-click="nextImage()" title="Next"><i class="icon-step-forward"></i></button>
-            <button class="btn" type="button" ng-click="checkAll(true)" title="Check all"><i class="icon-ok"></i></button>
-            <button class="btn" type="button" ng-click="checkAll(false)" title="Uncheck all"><i class="icon-remove"></i></button>
+            <button class="btn" type="button" ng-click="ssControls.prevImage()" title="Prev"><i class="icon-step-backward"></i></button>
+            <button class="btn" type="button" ng-click="ssControls.stopBlinking()" title="Stop"><i class="icon-stop"></i></button>
+            <button class="btn" type="button" ng-click="ssControls.startBlinking()" title="Play" ng-show="!ssControls.blinkingNow"><i class="icon-play"></i></button>
+            <button class="btn" type="button" ng-click="ssControls.pauseBlinking()" title="Pause" ng-show="ssControls.blinkingNow"><i class="icon-pause"></i></button>
+            <button class="btn" type="button" ng-click="ssControls.nextImage()" title="Next"><i class="icon-step-forward"></i></button>
+            <button class="btn" type="button" ng-click="ssControls.checkAll(true)" title="Check all"><i class="icon-ok"></i></button>
+            <button class="btn" type="button" ng-click="ssControls.checkAll(false)" title="Uncheck all"><i class="icon-remove"></i></button>
           </div>
-          <div ng-repeat="image in images" ng-show="$index==blinkData.currentImage">
+          <div ng-repeat="image in images" ng-show="$index==ssControls.currentImage">
             <img ng-src="/api/skymorph/image?key=[[image.key]]" />
           </div>
           <div ng-repeat="image in images">
             <label>
-              <input type="radio" name="currentImage" value="[[$index]]" ng-model="blinkData.currentImage" title="Click to choose this image"/>
+              <input type="radio" name="currentImage" value="[[$index]]" ng-model="ssControls.currentImage" title="Click to choose this image"/>
               <span ng-bind="image.time"></span>
               <input type="checkbox" style="margin-bottom:5px" ng-model="image.checked" title="Should it shown at slide-show above1" />
             </label>
@@ -68,4 +69,3 @@
     {% endraw %}
   </div>
 </div>
-

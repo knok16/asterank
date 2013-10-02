@@ -44,81 +44,28 @@ function AsteroidDetailsCtrl($scope, $http, pubsub) {
   $scope.asteroid = null;
   $scope.asteroid_details = null;
 
-  $scope.Init = function() {
-    $scope.ResetView();
-  }
+  $scope.init = function() {
+    $scope.resetView();
+  };
 
-  $scope.ResetView = function() {
-    $scope.showing_stats = [];   // stats to show
+  $scope.resetView = function() {
     $scope.approaches = [];      // upcoming approaches
     $scope.composition = [];
     $scope.images = [];
     $scope.images_loading = true;
-    $scope.blinkData = {currentImage:0};
-    $scope.stopBlinking();
-  }
+    if ($scope.ssControl)
+        $scope.ssControl.stopBlinking();
+  };
 
   var jpl_cache = new SimpleCache();
   var compositions_map = null;
-
-  var blinkInterval = undefined;
-
-  $scope.startBlinking = function startBlinkings() {
-    $scope.stopBlinking();
-    $scope.blinkData.blinkingNow = true;
-    blinkInterval = setInterval(function(){
-      $scope.$apply($scope.nextImage);
-    }, 1000);
-  }
-
-  $scope.stopBlinking = function stopBlinking() {
-    if (blinkInterval)
-      clearInterval(blinkInterval);
-    $scope.blinkData.blinkingNow = false;
-    blinkInterval = undefined;
-  }
-
-  $scope.checkAll = function checkAll(value) {
-    var images = $scope.images;
-    value = !!value;
-    for(var i in images)
-      if (images.hasOwnProperty(i))
-        images[i].checked = value;
-  }
-
-  $scope.nextImage = function nextImage() {
-    changeImage(forwardDirection);
-  }
-
-  $scope.prevImage = function prevImage() {
-    changeImage(backwardDirection);
-  }
-
-  function forwardDirection(currentImage, n) {
-    return (currentImage + 1) % n;
-  }
-
-  function backwardDirection(currentImage, n) {
-    return (currentImage - 1 + n) % n;
-  }
-
-  function changeImage(directionFn) {
-    var images = $scope.images;
-    var i = 0, n = images.length;
-    var currentImage = $scope.blinkData.currentImage | 0;
-    do {
-      currentImage = directionFn(currentImage, n);
-      i++;
-    } while (!images[currentImage].checked && i < n);
-    $scope.blinkData.currentImage = currentImage;
-  }
 
   pubsub.subscribe('AsteroidDetailsClick', function(asteroid) {
     if ($scope.asteroid
       && asteroid.full_name === $scope.asteroid.full_name) {
       // already selected
       $scope.asteroid = null;
-      $scope.ResetView();
+      $scope.resetView();
       pubsub.publish('ShowIntroStatement');
       pubsub.publish('Default3DView');
       return;
@@ -126,7 +73,7 @@ function AsteroidDetailsCtrl($scope, $http, pubsub) {
 
     // Update detailed click view
     $scope.asteroid = asteroid;
-    $scope.ResetView();
+    $scope.resetView();
 
     // Flat fields that we just want to display
     $scope.stats = [];
@@ -173,7 +120,7 @@ function AsteroidDetailsCtrl($scope, $http, pubsub) {
       if (!MPC_FIELDS_TO_INCLUDE.hasOwnProperty(attr)) continue;
       var val = MPC_FIELDS_TO_INCLUDE[attr];
       $scope.stats.push({
-        name: attr,
+        name: val.name,
         units: val.units,
         value: $scope.asteroid[attr]
       });
@@ -207,7 +154,7 @@ function AsteroidDetailsCtrl($scope, $http, pubsub) {
         if ($scope.asteroid.prov_des == requesting_images_for) {
           $scope.images = data.images;
           $scope.images_loading = false;
-          $scope.checkAll(true);
+          $scope.ssControls.checkAll(true);
         }
       });
     }
@@ -223,4 +170,3 @@ function AsteroidDetailsCtrl($scope, $http, pubsub) {
     );
   }
 }
-
