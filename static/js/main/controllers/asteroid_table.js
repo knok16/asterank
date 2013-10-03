@@ -1,113 +1,225 @@
-function AsteroidTableCtrl($scope, $http, pubsub) {
+function AsteroidTableCtrl($scope, $http, $filter, pubsub) {
   'use strict';
-  // Config
-  $scope.rankings = [];
-  $scope.loading_initial_rankings = true;
-  $scope.sort_orders = [
+  var numberFilter = $filter('number');
+  var fuzzyFilter = $filter('fuzzynum');
+  var ASC_ORDER = $scope.ASC_ORDER = '1';
+  var DESC_ORDER = $scope.DESC_ORDER = '-1';
+  var UNDEF_ORDER = $scope.UNDEF_ORDER = '0';
+  var POSSIBLE_ORDERS = $scope.POSSIBLE_ORDERS = [UNDEF_ORDER, ASC_ORDER, DESC_ORDER];
+  var POSSIBLE_LIMITS = $scope.POSSIBLE_LIMITS = [100, 300, 500, 1000, 4000];
+  //TODO fill this config
+  var POSSIBLE_COLUMNS = $scope.POSSIBLE_COLUMNS = [
     {
-      text: 'most cost effective',
-      search_value: 'score'
+      name: 'Name',
+      value: 'name',
+      orderBy: 'name'
     },
     {
-      text: 'most valuable',
-      search_value: 'value'
+      name: 'Prov des',
+      value: 'prov_des',
+      orderBy: 'prov_des'
     },
     {
-      text: 'most accessible',
-      search_value: 'accessibility'
+      name: 'Type',
+      value: 'spec',
+      orderBy: 'spec'
     },
     {
-      text: 'upcoming passes',
-      search_value: 'upcoming'
+      name: 'α (AU)',
+      value: function (asteroid) {
+        return numberFilter(asteroid.a, 3);
+      },
+      orderBy: 'a'
     },
     {
-      text: 'smallest',
-      search_value: 'smallest'
+      name: 'e',
+      value: function (asteroid) {
+        return numberFilter(asteroid.e, 3);
+      },
+      orderBy: 'e'
+    },
+    {
+      name: 'Value ($)',
+      value: function (asteroid) {
+        return fuzzyFilter(asteroid.price, 3);
+      },
+      orderBy: 'price'
+    },
+    {
+      name: 'Est. Profit ($)',
+      value: function (asteroid) {
+        return fuzzyFilter(asteroid.profit, 3);
+      },
+      orderBy: 'profit'
+    },
+    {
+      name: '&Delta;v (km/s)',
+      value: function (asteroid) {
+        return numberFilter(asteroid.dv, 3);
+      },
+      orderBy: 'dv'
+    },
+    {
+      name: 'Diameter (km)',
+      value: 'diameter',
+      orderBy: 'diameter'
+    },
+    {
+      name: 'Class',
+      value: function (asteroid) {
+        return asteroid['class'] ? (asteroid['class'] + (asteroid.pha === 'Y' ? '(PHA)' : '')) : '';
+      },
+      orderBy: 'class'
     }
   ];
-  $scope.limit_options = [100, 300, 500, 1000, 4000];
 
-  // Functions
+  //Init
+  $scope.rankings = [];
+  $scope.loading = false;
+  $scope.columns = [];
 
-  $scope.Init = function() {
-    // Initialization
-    $scope.limit = $scope.limit_options[1];
-    $scope.sort_by = $scope.sort_orders[0];
+  $scope.requestParams = {
+    orderBy: [],
+    page: 1,
+    limit: POSSIBLE_LIMITS[0]
+  };
 
-    $scope.UpdateRankings();
-  }
+  //Functions
+  //Work with columns
+  $scope.addColumn = function addColumn(column) {
+    var index = $scope.columns.indexOf(column);
+    if (index < 0)
+      $scope.columns.push(column);
+  };
 
-  var rankings_cache = new SimpleCache(function(item) {
-    return item.sort_by + '|' + item.limit;
-  });
-
-  $scope.UpdateRankings = function() {
-    var params = {
-      sort_by: $scope.sort_by.search_value,
-      limit: $scope.limit
-    };
-    var cache_result = rankings_cache.Get(params);
-    if (cache_result) {
-      $scope.rankings = cache_result;
-      // publish to subscribers (incl. 3d view)
-      pubsub.publish('NewAsteroidRanking', [$scope.rankings]);
-      BroadcastInitialRankingsLoaded();
+  $scope.deleteColumn = function deleteColumn(column) {
+    var index = $scope.columns.indexOf(column);
+    if (index >= 0) {
+      $scope.columns.splice(index, 1);
+      delete column['order'];
+      //TODO delete from ordering
     }
-    else {
-      $('#results-table-loader').show();
-      $scope.rankings = [];
-      $http.get('/api/rankings?sort_by='
-          + params.sort_by
-          + '&limit='
-          + params.limit)
-        .success(function(data) {
-        $scope.rankings = data;
-        rankings_cache.Set(params, data);
-        $('#results-table-loader').hide();
+  };
 
+  $scope.upColumn = function upColumn(column) {
+    var index = $scope.columns.indexOf(column);
+    if (index > 0)
+      swap($scope.columns, index, index - 1);
+  };
+
+  $scope.downColumn = function downColumn(column) {
+    var index = $scope.columns.indexOf(column);
+    if (index >= 0 && index + 1 < $scope.columns.length)
+      swap($scope.columns, index, index + 1);
+  };
+
+  $scope.getValue = function getValue(asteroid, columnValue) {
+    return angular.isFunction(columnValue) ? columnValue(asteroid) : asteroid[columnValue];
+  };
+
+  //Update rankings
+  $scope.refresh = function refresh() {
+    $scope.loading = true;
+    $http.get('/api/rankings', {params: $scope.requestParams, cache: true})
+      .success(function (data) {
+        $scope.loading = false;
+        $scope.rankings = data;
         // publish to subscribers (incl. 3d view)
         pubsub.publish('NewAsteroidRanking', [$scope.rankings]);
-        BroadcastInitialRankingsLoaded();
+        pubsub.publish('InitialRankingsLoaded');
       });
+  };
+
+  $scope.prevPage = function prevPage() {
+    $scope.requestParams.page = Math.max(1, $scope.requestParams.page - 1);
+    $scope.refresh();
+  };
+
+  $scope.nextPage = function nextPage() {
+    $scope.requestParams.page++;
+    $scope.refresh();
+  };
+
+  $scope.orderBy = function (column) {
+    var field = column.orderBy;
+    if (!field) return;
+
+    var orderBy = $scope.requestParams.orderBy;
+    var index = -1;
+    for (var i in orderBy)
+      if (orderBy.hasOwnProperty(i) && orderBy[i].field === field) {
+        index = i;
+        break;
+      }
+
+    var newDir;
+    switch (index | 0) {
+      case -1:
+        newDir = ASC_ORDER;
+        break;
+      case 0:
+        newDir = nextOrder(orderBy.shift().dir);
+        break;
+      default :
+        newDir = orderBy.splice(index, 1)[0].dir;
+        break;
     }
 
-  } // end UpdateRankings
+    column.order = newDir;
+    if (newDir !== UNDEF_ORDER) {
+      orderBy.unshift({field: field, dir: newDir});
+    }
+    $scope.refresh();
+  };
 
-  $scope.AsteroidClick = function(obj) {
-    if (obj === $scope.selected) {
-      // deselect
-      $scope.selected = null;
-    }
-    else {
-      $scope.selected = obj;
-    }
+  //TODO init
+  for (var i in POSSIBLE_COLUMNS)
+    if (POSSIBLE_COLUMNS.hasOwnProperty(i))
+      $scope.addColumn(POSSIBLE_COLUMNS[i]);
+
+  $scope.refresh();
+
+  //Helpers
+  function swap(collection, ind1, ind2) {
+    var tmp = collection[ind1];
+    collection[ind1] = collection[ind2];
+    collection[ind2] = tmp;
+  }
+
+  function nextOrder(order) {
+    var index = POSSIBLE_ORDERS.indexOf(order);
+    if (index >= 0)
+      return POSSIBLE_ORDERS[(index + 1) % POSSIBLE_ORDERS.length];
+  }
+
+  $scope.AsteroidClick = function (obj) {
+    $scope.selected = obj === $scope.selected ? null : obj;
     pubsub.publish('AsteroidDetailsClick', [obj]);
-  }
+  };
 
-  var inserted_asteroids = {};
-  pubsub.subscribe('UpdateRankingsWithFeaturedAsteroid', function(asteroid) {
-    // normal rankings, except we insert a featured asteroid on top
-    $scope.selected = asteroid;
-
-    if (!inserted_asteroids[asteroid.full_name]) {
-      // update rankings
-      $scope.rankings.unshift(asteroid);
-
-      // send new rankings to 3d view
-      pubsub.publish('NewAsteroidRanking', [$scope.rankings]);
-
-      inserted_asteroids[asteroid.full_name] = true;
-    }
-
-    // load details
-    pubsub.publish('AsteroidDetailsClick', [asteroid]);
-  });
-
-  function BroadcastInitialRankingsLoaded() {
-    if ($scope.loading_initial_rankings) {
-      pubsub.publish('InitialRankingsLoaded');
-      $scope.loading_initial_rankings = false;
-    }
-  }
+//    var inserted_asteroids = {};
+//    pubsub.subscribe('UpdateRankingsWithFeaturedAsteroid', function (asteroid) {
+//        // normal rankings, except we insert a featured asteroid on top
+//        $scope.selected = asteroid;
+//
+//        if (!inserted_asteroids[asteroid.full_name]) {
+//            // update rankings
+//            $scope.rankings.unshift(asteroid);
+//
+//            // send new rankings to 3d view
+//            pubsub.publish('NewAsteroidRanking', [$scope.rankings]);
+//
+//            inserted_asteroids[asteroid.full_name] = true;
+//        }
+//
+//        // load details
+//        pubsub.publish('AsteroidDetailsClick', [asteroid]);
+//    });
+//
+//    function BroadcastInitialRankingsLoaded() {
+//        if ($scope.loading_initial_rankings) {
+//            pubsub.publish('InitialRankingsLoaded');
+//            $scope.loading_initial_rankings = false;
+//        }
+//    }
 }
-

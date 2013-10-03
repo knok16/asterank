@@ -138,9 +138,12 @@ def api_asterank():
 @app.route('/api/rankings')
 def rankings():
   try:
+    order_by = json.loads(request.args.get('orderBy'))
     limit = int(request.args.get('limit')) or 10
+    page = int(request.args.get('page')) or 1
     orbital_info_only = request.args.get('orbits_only')
-    results = api.rankings(request.args.get('sort_by'), limit, orbital_info_only)
+
+    results = api.rankings(order_by, limit, page, orbital_info_only)
     json_resp = json.dumps(results, allow_nan=False)
     return Response(json_resp, mimetype='application/json', headers={ \
       'Cache-Control': 'max-age=432000', # 5 days

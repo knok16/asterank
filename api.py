@@ -33,25 +33,22 @@ FIELD_ALIASES = {
   'accessibility': 'closeness',
 }
 
-def rankings(sort_by, limit, orbits_only=False):
+def rankings(order_by, limit, page, orbits_only=False):
+  #TODO add upcoming passes
   fields = {}
   if orbits_only:
     fields = {field: True for field in ORBIT_FIELDS}
   fields['_id'] = False
 
-  if sort_by not in VALID_SORTS:
-    return None
-  if sort_by == UPCOMING_SORT:
-    return upcoming_passes()
-  if sort_by in FIELD_ALIASES:
-    sort_by = FIELD_ALIASES[sort_by]
+  t = asteroids.find({}, fields)
+  # TODO rework to 1 sort call
+  if (order_by):
+    for val in reversed(order_by):
+      t = t.sort(val[u'field'], int(val[u'dir']))
+      #sortCriteria.append((val[u'field'], val[u'dir']))
+    #t = t.sort(sortCriteria)
+  results = t.skip((page-1)*limit).limit(limit)
 
-  if sort_by == SMALL_SIZE_SORT:
-    results = ranking_by_smallest(limit, fields)
-  else:
-    results = list(asteroids.find({}, fields) \
-            .sort(sort_by, direction=pymongo.DESCENDING) \
-            .limit(limit))
   # remove empty fields
   ret = []
   for obj in results:
