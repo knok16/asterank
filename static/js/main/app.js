@@ -35,29 +35,31 @@
         $interpolateProvider.startSymbol('[[').endSymbol(']]');
     });
 
-  mod.directive('autocomplete', function() {
+  mod.directive('autocomplete', function($timeout) {
     return {
       restrict: 'A',
-      replace: true,
-      transclude: true,
-      template: '<div><input class="span3" type="text" placeholder="Lookup asteroids, eg. 433 Eros"/>'
-          + '<div id="asteroid-lookup-suggestions"></div></div>',
-
       link: function($scope, element, attrs) {
-        var $el = $(element).find('input');
-        $el.autocomplete({
-          minChars: 3,
+        if (!$scope.$eval(attrs.autocomplete))return;
+        var field = $scope.$eval(attrs.param);
+        $(element).autocomplete({
+          width: '200px',
+          noCache: true, //TODO delete this
+          minChars: 2, //TODO think about it
+          params: {
+//            collection: 'asteriods', //TODO
+            field: field
+          },
           serviceUrl: '/api/autocomplete',
           paramName: 'query',
           transformResult: function(resp) {
             return $.map(resp, function(item) {
-              return {value: item.full_name, data: item};
+              return {value: item, data: item};
             });
           },
           onSelect: function(suggestion) {
-            $scope.Lookup(suggestion);
-          },
-          appendTo: '#asteroid-lookup-suggestions'
+            //$scope.refresh(); TODO
+          }
+          //appendTo: '#asteroid-lookup-suggestions'
         });
       }
     };

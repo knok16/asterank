@@ -21,14 +21,16 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
       template: '[[asteroid.name || "-"]]',
       field: 'name',
       sortable: true,
-      searchable: true
+      searchable: true,
+      autocomplete: true
     },
     {
       title: 'Prov des',
       template: '[[asteroid.prov_des]]',
       field: 'prov_des',
       sortable: true,
-      searchable: true
+      searchable: true,
+      autocomplete: true
     },
     {
       title: 'Type',
@@ -84,7 +86,8 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
       template: '[[asteroid.class]]<span ng-show="asteroid.pha == \'Y\'">(PHA)</span>',
       field: 'class',
       sortable: true,
-      searchable: true
+      searchable: true,
+      autocomplete: true
     }
   ];
 
@@ -118,7 +121,7 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
       column.sortDir = UNDEF_ORDER;
       delete $scope.requestParams.searchCriteria[column.field];
       index = $scope.requestParams.sortBy.indexOf(column);
-      if (index>=0)
+      if (index >= 0)
         $scope.requestParams.sortBy.splice(index, 0);
     }
   };
@@ -139,8 +142,8 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
   $scope.refresh = function refresh() {
     $scope.loading = true;
     var sortBy = [];
-    angular.forEach($scope.requestParams.sortBy, function(value){
-      sortBy.push({field:value.field, dir:value.sortDir});
+    angular.forEach($scope.requestParams.sortBy, function (value) {
+      sortBy.push({field: value.field, dir: value.sortDir});
     });
     $http.get('/api/rankings',
       {
@@ -161,7 +164,7 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
         // publish to subscribers (incl. 3d view)
         pubsub.publish('NewAsteroidRanking', [$scope.rankings]);
         pubsub.publish('InitialRankingsLoaded');
-      }).error(function(){
+      }).error(function () {
         //TODO add error handler
         $scope.loading = false;
       });
@@ -207,7 +210,7 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
     $scope.refresh();
   };
 
-  $scope.clearFilters = function clearFilters(){
+  $scope.clearFilters = function clearFilters() {
     $scope.requestParams.searchCriteria = {};
     $scope.refresh();
   };

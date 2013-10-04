@@ -152,7 +152,8 @@ def rankings():
 
 @app.route('/api/autocomplete')
 def autocomplete():
-  results = api.autocomplete(request.args.get('query'), 10)
+  # TODO add collection parameter
+  results = api.autocomplete(request.args.get('field'), request.args.get('query'), 10)
   json_resp = json.dumps(results)
   return Response(json_resp, mimetype='application/json', headers={ \
     'Cache-Control': 'max-age=432000',  # 5 days
