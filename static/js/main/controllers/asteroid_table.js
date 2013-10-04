@@ -1,4 +1,4 @@
-function AsteroidTableCtrl($scope, $http, $filter, $compile, pubsub) {
+function AsteroidTableCtrl($scope, $http, pubsub) {
   'use strict';
   var ASC_ORDER = $scope.ASC_ORDER = '1';
   var DESC_ORDER = $scope.DESC_ORDER = '-1';
@@ -112,9 +112,11 @@ function AsteroidTableCtrl($scope, $http, $filter, $compile, pubsub) {
     var index = $scope.columns.indexOf(column);
     if (index >= 0) {
       $scope.columns.splice(index, 1);
-      delete column['order'];
       column.selected = false;
-      //TODO delete from ordering
+      column.sortDir = UNDEF_ORDER;
+      index = $scope.requestParams.sortBy.indexOf(column);
+      if (index>=0)
+        $scope.requestParams.sortBy.splice(index, 0);
     }
   };
 
@@ -151,6 +153,9 @@ function AsteroidTableCtrl($scope, $http, $filter, $compile, pubsub) {
         // publish to subscribers (incl. 3d view)
         pubsub.publish('NewAsteroidRanking', [$scope.rankings]);
         pubsub.publish('InitialRankingsLoaded');
+      }).error(function(){
+        //TODO add error handler
+        $scope.loading = false;
       });
   };
 
