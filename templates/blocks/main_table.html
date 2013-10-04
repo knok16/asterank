@@ -1,29 +1,28 @@
 <div ng-controller="AsteroidTableCtrl" ng-cloak>
-  <div class="form-horizontal" style="height: 30px">
-    <div ng-controller="AsteroidLookupCtrl" ng-init="Init()" style="float: left; width: 280px;">
-      Lookup:
-      <span id="autocomplete-container" autocomplete-input="{{lookup_query}}" autocomplete></span>
-    </div>
-    <!-- CUSTOM INPUT -->
-    {% include "blocks/custom_input.html" %}
-    <!-- MAIN TABLE -->
-    <div class="pull-right">
-      Show
-      <select ng-options="x for x in POSSIBLE_LIMITS" ng-model="requestParams.limit" ng-change="refresh()"
-              style="height:24px; width:70px; font-size:12px">
-      </select>
-    </div>
-    <!--<div class="pagination pagination-right pagination-mini">-->
-    <!--<ul>-->
-    <!--<li ng-class="{disabled:requestParams.page<=1}"><a href="#" ng-click="prevPage()">&laquo;</a></li>-->
-    <!--<li class="active"><a href="#" ng-bind="requestParams.page"></a></li>-->
-    <!--<li><a href="#" ng-click="nextPage()">&raquo;</a></li>-->
-    <!--</ul>-->
-    <!--</div>-->
-    <div class="pull-right">
-      <a ng-class="{disabled:requestParams.page<=1}" ng-click="prevPage()"><i class="icon-chevron-left"></i></a>
-      <span class="badge" ng-bind="requestParams.page"></span>
-      <a ng-click="nextPage()"><i class="icon-chevron-right"></i></a>
+  <div class="navbar navbar-inverse">
+    <div class="navbar-inner">
+      <div ng-controller="AsteroidLookupCtrl" ng-init="Init()" class="navbar-form pull-left">
+        <span id="autocomplete-container" autocomplete-input="{{lookup_query}}" autocomplete></span>
+      </div>
+      <!-- CUSTOM INPUT -->
+      {% include "blocks/custom_input.html" %}
+      <!-- MAIN TABLE -->
+      <!--TODO redesign this panel-->
+      <div class="btn-group pull-right">
+        <select class="input-small btn btn-info" ng-options="x for x in POSSIBLE_LIMITS" ng-model="requestParams.limit"
+                ng-change="refresh()">
+        </select>
+        <a class="btn btn-info" ng-class="{active:requestParams.page<=1}" ng-click="prevPage()"><i
+            class="icon-chevron-left icon-white"></i></a>
+        <span class="btn btn-info active" ng-bind="requestParams.page"></span>
+        <a class="btn btn-info" ng-click="nextPage()"><i class="icon-chevron-right icon-white"></i></a>
+        <button class="btn btn-info" ng-click="refresh()">
+          <i class="icon-repeat"></i>Refresh
+        </button>
+        <button class="btn btn-info" ng-click="showColumnSetting=true">
+          <i class="icon-wrench"></i>
+        </button>
+      </div>
     </div>
   </div>
   <div id="results-table-container">
@@ -31,16 +30,16 @@
       <thead>
       <tr>
         <th ng-repeat="column in columns" ng-click="orderBy(column)">
-          <span ng-bind="column.name"></span>
-          <i ng-show="column.order==ASC_ORDER" class="icon-chevron-up"></i>
-          <i ng-show="column.order==DESC_ORDER" class="icon-chevron-down"></i>
+          <span bind-template="column.title"></span>
+          <i ng-show="column.order==ASC_ORDER" class="icon-chevron-up icon-white"></i>
+          <i ng-show="column.order==DESC_ORDER" class="icon-chevron-down icon-white"></i>
         </th>
       </tr>
       </thead>
       <tbody>
       <tr ng-repeat="asteroid in rankings" ng-click="AsteroidClick(asteroid)"
           ng-class="{info: selected.full_name == asteroid.full_name}">
-        <td ng-repeat="column in columns" ng-bind="getValue(asteroid, column.value)"></td>
+        <td ng-repeat="column in columns" bind-template="column.template"></td>
       </tr>
       </tbody>
     </table>
@@ -48,5 +47,34 @@
       Loading....
     </div>
   </div>
+  <!--TODO move in block/smthng.html-->
+  <div modal="showColumnSetting">
+    <div class="column-setting-modal">
+      <ul class="span2">
+        <li>Available columns:</li>
+        <li ng-repeat="column in POSSIBLE_COLUMNS" ng-show="!column.selected">
+          <a ng-click="addColumn(column)">
+            <i class="icon-plus icon-white"></i>
+          </a>
+          <span bind-template="column.title"></span>
+        </li>
+      </ul>
+      <ul class="span2">
+        <li>Already added:</li>
+        <li ng-repeat="column in columns">
+          <a ng-click="deleteColumn(column)">
+            <i class="icon-minus icon-white"></i>
+          </a>
+          <span bind-template="column.title"></span>
 
+          <a ng-click="upColumn(column)">
+            <i class="icon-arrow-up icon-white"></i>
+          </a>
+          <a ng-click="downColumn(column)">
+            <i class="icon-arrow-down icon-white"></i>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
 </div>

@@ -1,4 +1,4 @@
-function AsteroidTableCtrl($scope, $http, $filter, pubsub) {
+function AsteroidTableCtrl($scope, $http, $filter, $compile, pubsub) {
   'use strict';
   var numberFilter = $filter('number');
   var fuzzyFilter = $filter('fuzzynum');
@@ -6,70 +6,85 @@ function AsteroidTableCtrl($scope, $http, $filter, pubsub) {
   var DESC_ORDER = $scope.DESC_ORDER = '-1';
   var UNDEF_ORDER = $scope.UNDEF_ORDER = '0';
   var POSSIBLE_ORDERS = $scope.POSSIBLE_ORDERS = [UNDEF_ORDER, ASC_ORDER, DESC_ORDER];
-  var POSSIBLE_LIMITS = $scope.POSSIBLE_LIMITS = [100, 300, 500, 1000, 4000];
+  var POSSIBLE_LIMITS = $scope.POSSIBLE_LIMITS = [10, 50, 100, 300, 500];
   //TODO fill this config
   var POSSIBLE_COLUMNS = $scope.POSSIBLE_COLUMNS = [
+//    {
+//      title: //title template
+//      template: //cell template
+//      value: //field in asteroid object - optional
+//      sortable: //boolean - can user sort data by this column
+//      searchable: //boolean - can user search by this column
+//    },
     {
-      name: 'Name',
+      title: 'Name',
+      template: '[[asteroid.name]]',
       value: 'name',
-      orderBy: 'name'
+      sortable: true,
+      searchable: true
     },
     {
-      name: 'Prov des',
+      title: 'Prov des',
+      template: '[[asteroid.prov_des]]',
       value: 'prov_des',
-      orderBy: 'prov_des'
+      sortable: true,
+      searchable: true
     },
     {
-      name: 'Type',
+      title: 'Type',
+      template: '[[asteroid.spec]]',
       value: 'spec',
-      orderBy: 'spec'
+      sortable: true,
+      searchable: true
     },
     {
-      name: 'α (AU)',
-      value: function (asteroid) {
-        return numberFilter(asteroid.a, 3);
-      },
-      orderBy: 'a'
+      title: 'α (AU) <i class="icon-info-sign icon-white" title="Semi-major Axis"></i>',
+      template: '[[asteroid.a | number:3]]',
+      value: 'a',
+      sortable: true,
+      searchable: true
     },
     {
-      name: 'e',
-      value: function (asteroid) {
-        return numberFilter(asteroid.e, 3);
-      },
-      orderBy: 'e'
+      title: 'e <i class="icon-info-sign icon-white" title="Eccentricity"></i>',
+      template: '[[asteroid.e | number:3]]',
+      value: 'e',
+      sortable: true,
+      searchable: true
     },
     {
-      name: 'Value ($)',
-      value: function (asteroid) {
-        return fuzzyFilter(asteroid.price, 3);
-      },
-      orderBy: 'price'
+      title: 'Value ($)',
+      template: '[[asteroid.price | fuzzynum]]',
+      value: 'price',
+      sortable: true,
+      searchable: true
     },
     {
-      name: 'Est. Profit ($)',
-      value: function (asteroid) {
-        return fuzzyFilter(asteroid.profit, 3);
-      },
-      orderBy: 'profit'
+      title: 'Est. Profit ($)',
+      template: '[[asteroid.profit | fuzzynum]]',
+      value: 'profit',
+      sortable: true,
+      searchable: true
     },
     {
-      name: '&Delta;v (km/s)',
-      value: function (asteroid) {
-        return numberFilter(asteroid.dv, 3);
-      },
-      orderBy: 'dv'
+      title: 'Δv (km/s)',
+      template: '[[asteroid.dv | number:3]]',
+      value: 'dv',
+      sortable: true,
+      searchable: true
     },
     {
-      name: 'Diameter (km)',
+      title: 'Diameter (km)',
+      template: '[[asteroid.diameter]]',
       value: 'diameter',
-      orderBy: 'diameter'
+      sortable: true,
+      searchable: true
     },
     {
-      name: 'Class',
-      value: function (asteroid) {
-        return asteroid['class'] ? (asteroid['class'] + (asteroid.pha === 'Y' ? '(PHA)' : '')) : '';
-      },
-      orderBy: 'class'
+      title: 'Class',
+      template: '[[asteroid.class]]<span ng-show="asteroid.pha == \'Y\'">(PHA)</span>',
+      value: 'class',
+      sortable: true,
+      searchable: true
     }
   ];
 
@@ -88,8 +103,10 @@ function AsteroidTableCtrl($scope, $http, $filter, pubsub) {
   //Work with columns
   $scope.addColumn = function addColumn(column) {
     var index = $scope.columns.indexOf(column);
-    if (index < 0)
+    if (index < 0) {
       $scope.columns.push(column);
+      column.selected = true;
+    }
   };
 
   $scope.deleteColumn = function deleteColumn(column) {
@@ -97,6 +114,7 @@ function AsteroidTableCtrl($scope, $http, $filter, pubsub) {
     if (index >= 0) {
       $scope.columns.splice(index, 1);
       delete column['order'];
+      column.selected = false;
       //TODO delete from ordering
     }
   };
@@ -141,8 +159,8 @@ function AsteroidTableCtrl($scope, $http, $filter, pubsub) {
   };
 
   $scope.orderBy = function (column) {
-    var field = column.orderBy;
-    if (!field) return;
+    if (!column.sortable) return;
+    var field = column.value;
 
     var orderBy = $scope.requestParams.orderBy;
     var index = -1;
@@ -188,8 +206,7 @@ function AsteroidTableCtrl($scope, $http, $filter, pubsub) {
 
   function nextOrder(order) {
     var index = POSSIBLE_ORDERS.indexOf(order);
-    if (index >= 0)
-      return POSSIBLE_ORDERS[(index + 1) % POSSIBLE_ORDERS.length];
+    return index >= 0 ? POSSIBLE_ORDERS[(index + 1) % POSSIBLE_ORDERS.length] : UNDEF_ORDER;
   }
 
   $scope.AsteroidClick = function (obj) {

@@ -1,44 +1,6 @@
 (function() {
   'use strict';
 
-  var fuzzes = [
-    {
-      word: 'trillion',
-      num: 1000000000000
-    },
-    {
-      word: 'billion',
-      num: 1000000000
-    },
-    {
-      word: 'million',
-      num: 1000000
-    }
-  ];
-
-  function toFuzz(n) {
-    if (n < 0.1) {
-      return 0;
-    }
-    for (var i=0; i < fuzzes.length; i++) {
-      var x = fuzzes[i];
-      if (n / x.num >= 1) {
-        var prefix = (n / x.num);
-        if (i==0 && prefix > 100)
-          return '>100 ' + x.word;
-        return prefix.toFixed(2) + ' ' + x.word;
-      }
-    }
-    return n;
-  }
-
-  function truncateText(txt, len) {
-    if (txt.length > len) {
-      txt = txt.substring(0,len-3) + '...';
-    }
-    return txt;
-  }
-
   function sizeContainers() {
     // top and bottom
     var $tc = $('#top-container');
@@ -66,68 +28,19 @@
   }
   sizeContainers();
 
-  $(window).on('resize', function() {
-    sizeContainers();
-  });
+  $(window).on('resize', sizeContainers);
 
-  var mod = angular.module('AsterankApp', ['filters', 'ui.bootstrap', 'utils'])
+  var mod = angular.module('AsterankApp', ['ui.bootstrap', 'utils'])
     .config(function($interpolateProvider) {
         $interpolateProvider.startSymbol('[[').endSymbol(']]');
     });
-
-  angular.module('filters',[])
-    .filter('fuzzynum', function(){
-      return function(num){
-          return toFuzz(num)
-      };
-    })
-    .filter('truncate', function() {
-      return function(txt) {
-        return truncateText(txt);
-      }
-    })
-    .filter('ifempty', function() {
-      return function(s1, s2) {
-        if (!s1) return s2;
-        return s1;
-      }
-    });
-
-  mod.factory('pubsub', function() {
-  // https://gist.github.com/floatingmonkey/3384419
-    var cache = {};
-    return {
-      publish: function(topic, args) {
-        cache[topic] && $.each(cache[topic], function() {
-          this.apply(null, args || []);
-        });
-      },
-
-      subscribe: function(topic, callback) {
-        if(!cache[topic]) {
-          cache[topic] = [];
-        }
-        cache[topic].push(callback);
-        return [topic, callback];
-      },
-
-      unsubscribe: function(handle) {
-        var t = handle[0];
-        cache[t] && d.each(cache[t], function(idx){
-          if(this == handle[1]){
-            cache[t].splice(idx, 1);
-          }
-        });
-      }
-    }
-  });
 
   mod.directive('autocomplete', function() {
     return {
       restrict: 'A',
       replace: true,
       transclude: true,
-      template: '<div style="display:inline"><input class="input" type="text" placeholder="eg. 433 Eros" style="height:15px;font-size:12px;"/>'
+      template: '<div><input class="span3" type="text" placeholder="Lookup asteroids, eg. 433 Eros"/>'
           + '<div id="asteroid-lookup-suggestions"></div></div>',
 
       link: function($scope, element, attrs) {
