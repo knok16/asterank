@@ -1,88 +1,87 @@
 function AsteroidTableCtrl($scope, $http, $filter, $compile, pubsub) {
   'use strict';
-  var numberFilter = $filter('number');
-  var fuzzyFilter = $filter('fuzzynum');
   var ASC_ORDER = $scope.ASC_ORDER = '1';
   var DESC_ORDER = $scope.DESC_ORDER = '-1';
   var UNDEF_ORDER = $scope.UNDEF_ORDER = '0';
   var POSSIBLE_ORDERS = $scope.POSSIBLE_ORDERS = [UNDEF_ORDER, ASC_ORDER, DESC_ORDER];
+  var MAX_COLUMNS_FOR_SORTING = 3;
   var POSSIBLE_LIMITS = $scope.POSSIBLE_LIMITS = [10, 50, 100, 300, 500];
   //TODO fill this config
   var POSSIBLE_COLUMNS = $scope.POSSIBLE_COLUMNS = [
 //    {
 //      title: //title template
 //      template: //cell template
-//      value: //field in asteroid object - optional
+//      field: //field in asteroid object - optional
 //      sortable: //boolean - can user sort data by this column
 //      searchable: //boolean - can user search by this column
 //    },
     {
       title: 'Name',
       template: '[[asteroid.name]]',
-      value: 'name',
+      field: 'name',
       sortable: true,
       searchable: true
     },
     {
       title: 'Prov des',
       template: '[[asteroid.prov_des]]',
-      value: 'prov_des',
+      field: 'prov_des',
       sortable: true,
       searchable: true
     },
     {
       title: 'Type',
       template: '[[asteroid.spec]]',
-      value: 'spec',
+      field: 'spec',
       sortable: true,
       searchable: true
     },
     {
       title: 'α (AU) <i class="icon-info-sign icon-white" title="Semi-major Axis"></i>',
       template: '[[asteroid.a | number:3]]',
-      value: 'a',
+      field: 'a',
       sortable: true,
       searchable: true
     },
     {
       title: 'e <i class="icon-info-sign icon-white" title="Eccentricity"></i>',
       template: '[[asteroid.e | number:3]]',
-      value: 'e',
+      field: 'e',
       sortable: true,
       searchable: true
     },
     {
       title: 'Value ($)',
       template: '[[asteroid.price | fuzzynum]]',
-      value: 'price',
+      field: 'price',
       sortable: true,
       searchable: true
     },
     {
       title: 'Est. Profit ($)',
       template: '[[asteroid.profit | fuzzynum]]',
-      value: 'profit',
+      field: 'profit',
       sortable: true,
       searchable: true
     },
     {
       title: 'Δv (km/s)',
       template: '[[asteroid.dv | number:3]]',
-      value: 'dv',
+      field: 'dv',
       sortable: true,
       searchable: true
     },
     {
       title: 'Diameter (km)',
       template: '[[asteroid.diameter]]',
-      value: 'diameter',
+      field: 'diameter',
       sortable: true,
       searchable: true
     },
     {
       title: 'Class',
       template: '[[asteroid.class]]<span ng-show="asteroid.pha == \'Y\'">(PHA)</span>',
-      value: 'class',
+      field: 'class',
       sortable: true,
       searchable: true
     }
@@ -94,7 +93,7 @@ function AsteroidTableCtrl($scope, $http, $filter, $compile, pubsub) {
   $scope.columns = [];
 
   $scope.requestParams = {
-    orderBy: [],
+    sortBy: [],
     page: 1,
     limit: POSSIBLE_LIMITS[0]
   };
@@ -131,15 +130,22 @@ function AsteroidTableCtrl($scope, $http, $filter, $compile, pubsub) {
       swap($scope.columns, index, index + 1);
   };
 
-  $scope.getValue = function getValue(asteroid, columnValue) {
-    return angular.isFunction(columnValue) ? columnValue(asteroid) : asteroid[columnValue];
-  };
-
   //Update rankings
   $scope.refresh = function refresh() {
     $scope.loading = true;
-    $http.get('/api/rankings', {params: $scope.requestParams, cache: true})
-      .success(function (data) {
+    var sortBy = [];
+    angular.forEach($scope.requestParams.sortBy, function(value){
+      sortBy.push({field:value.field, dir:value.sortDir});
+    });
+    $http.get('/api/rankings',
+      {
+        params: {
+          limit: $scope.requestParams.limit,
+          page: $scope.requestParams.page,
+          sortBy: sortBy
+        },
+        cache: true
+      }).success(function (data) {
         $scope.loading = false;
         $scope.rankings = data;
         // publish to subscribers (incl. 3d view)
@@ -158,34 +164,32 @@ function AsteroidTableCtrl($scope, $http, $filter, $compile, pubsub) {
     $scope.refresh();
   };
 
-  $scope.orderBy = function (column) {
+  $scope.sortBy = function (column) {
     if (!column.sortable) return;
-    var field = column.value;
 
-    var orderBy = $scope.requestParams.orderBy;
-    var index = -1;
-    for (var i in orderBy)
-      if (orderBy.hasOwnProperty(i) && orderBy[i].field === field) {
-        index = i;
-        break;
-      }
+    var sortBy = $scope.requestParams.sortBy;
+    var index = sortBy.indexOf(column);
 
     var newDir;
-    switch (index | 0) {
+    switch (index) {
       case -1:
         newDir = ASC_ORDER;
         break;
       case 0:
-        newDir = nextOrder(orderBy.shift().dir);
+        newDir = nextOrder(sortBy.shift().sortDir);
         break;
       default :
-        newDir = orderBy.splice(index, 1)[0].dir;
+        newDir = sortBy.splice(index, 1)[0].sortDir;
         break;
     }
 
-    column.order = newDir;
+    column.sortDir = newDir;
     if (newDir !== UNDEF_ORDER) {
-      orderBy.unshift({field: field, dir: newDir});
+      sortBy.unshift(column);
+    }
+    while (sortBy.length > MAX_COLUMNS_FOR_SORTING) {
+      column = sortBy.pop();
+      column.sortDir = UNDEF_ORDER;
     }
     $scope.refresh();
   };

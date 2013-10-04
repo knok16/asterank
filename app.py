@@ -138,7 +138,8 @@ def api_asterank():
 @app.route('/api/rankings')
 def rankings():
   try:
-    order_by = json.loads(request.args.get('orderBy'))
+    MAX_COLUMNS_FOR_SORTING = 3
+    order_by = json.loads(request.args.get('sortBy'))[:MAX_COLUMNS_FOR_SORTING]
     limit = int(request.args.get('limit')) or 10
     page = int(request.args.get('page')) or 1
     orbital_info_only = request.args.get('orbits_only')
