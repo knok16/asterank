@@ -2,12 +2,7 @@
 from flask import Flask, request, redirect, session, url_for, render_template, Response, jsonify, make_response, send_from_directory
 from flask.ext.assets import Environment, Bundle
 from flask.ext.mail import Mail
-import urllib
-import urlparse
 import json
-import random
-import base64
-import re
 
 import api
 from stackblink import stackblink
@@ -138,13 +133,13 @@ def api_asterank():
 @app.route('/api/rankings')
 def rankings():
   try:
-    MAX_COLUMNS_FOR_SORTING = 3
-    order_by = json.loads(request.args.get('sortBy'))[:MAX_COLUMNS_FOR_SORTING]
+    order_by = json.loads(request.args.get('sortBy'))
     limit = int(request.args.get('limit')) or 10
     page = int(request.args.get('page')) or 1
+    search_criteria = json.loads(request.args.get('searchCriteria'))
     orbital_info_only = request.args.get('orbits_only')
 
-    results = api.rankings(order_by, limit, page, orbital_info_only)
+    results = api.rankings(search_criteria, order_by, limit, page, orbital_info_only)
     json_resp = json.dumps(results, allow_nan=False)
     return Response(json_resp, mimetype='application/json', headers={ \
       'Cache-Control': 'max-age=432000', # 5 days

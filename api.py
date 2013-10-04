@@ -1,4 +1,3 @@
-import json
 import re
 import datetime
 import pymongo
@@ -33,21 +32,107 @@ FIELD_ALIASES = {
   'accessibility': 'closeness',
 }
 
-def rankings(order_by, limit, page, orbits_only=False):
+#TODO set to 1 while server doesn't work correct for several fields
+# add corresponded indexes to db to increas this value
+MAX_COLUMNS_FOR_SORTING = 1
+
+def prepare_like_criteria(query):
+  return {'$regex': query}
+
+def parse_number(str):
+  # match
+  # 1st group: (+|-int) - integer part
+  # 2nd group: (.int) - fractal part
+  # 3rd group: trillion|billion|million or prefix
+  match = re.match('^((?:-|\+)?\d+)(\.\d*)?(.*)$', str)
+  if match:
+    g1 = match.group(1)
+    g2 = match.group(2)
+    g3 = match.group(3).lower()
+    result = int(g1)
+    if g2:
+      result += float(g2)
+    if g3:
+      if 'million'.startswith(g3):
+        result *= 1000000
+      elif 'billion'.startswith(g3):
+        result *= 1000000000
+      elif 'trillion'.startswith(g3):
+        result *= 1000000000000
+    return result
+  else:
+    return 0
+
+def prepare_number_criteria(query):
+  query = ''.join(query.split()) # Delete all whitespaces
+  if query.startswith('<='):
+    return {'$lte': parse_number(query[2:])}
+  elif query.startswith('<'):
+    return {'$lt': parse_number(query[1:])}
+  elif query.startswith('>='):
+    return {'$gte': parse_number(query[2:])}
+  elif query.startswith('>'):
+    return {'$gt': parse_number(query[1:])}
+  elif '~' in query:
+    split_result = query.split('~')
+    first_part = split_result[0]
+    second_part = split_result[1]
+    return {'$gte': parse_number(first_part), '$lte': parse_number(second_part)}
+  else:
+    return query
+
+#TODO extend
+HOW_PREPARE_FIELD = {
+  'name': prepare_like_criteria,
+  'prov_des': prepare_like_criteria,
+  #'spec': return_exact_field,
+  'a': prepare_number_criteria,
+  'e': prepare_number_criteria,
+  'price': prepare_number_criteria,
+  'profit': prepare_number_criteria,
+  'dv': prepare_number_criteria,
+  'diameter': prepare_number_criteria,
+  #'class': return_exact_field,
+}
+
+def prepare_search_criteria(search_criteria):
+  result = {}
+  for key in search_criteria:
+    currentCriteria = search_criteria[key]
+    if currentCriteria:
+      if key in HOW_PREPARE_FIELD:
+        result[key] = HOW_PREPARE_FIELD[key](currentCriteria)
+      else:
+        result[key] = currentCriteria
+  return result
+
+def rankings(search_criteria, order_by, limit, page, orbits_only=False):
   #TODO add upcoming passes
+
+  #preparing data for query
+  search_criteria = prepare_search_criteria(search_criteria)
+  order_by = order_by[:MAX_COLUMNS_FOR_SORTING]
+  page = max(1, page)
+  limit = max(1, limit)
+  skip_count = (page-1)*limit
+
   fields = {}
   if orbits_only:
     fields = {field: True for field in ORBIT_FIELDS}
   fields['_id'] = False
 
-  t = asteroids.find({}, fields)
-  # TODO rework to 1 sort call
+  t = asteroids.find(search_criteria, fields)
   if (order_by):
+    sortCriteria = []
     for val in reversed(order_by):
-      t = t.sort(val[u'field'], int(val[u'dir']))
-      #sortCriteria.append((val[u'field'], val[u'dir']))
-    #t = t.sort(sortCriteria)
-  results = t.skip((page-1)*limit).limit(limit)
+      sortCriteria.append((val[u'field'], int(val[u'dir'])))
+    t = t.sort(sortCriteria)
+  count = t.count()
+  if (skip_count>=count):
+    page = (count / limit) + (1 if count%limit else 0)
+    skip_count = max(0, (page-1)*limit)
+
+  results = t.skip(skip_count).limit(limit)
 
   # remove empty fields
   ret = []
@@ -60,7 +145,7 @@ def rankings(order_by, limit, page, orbits_only=False):
     if appendme['profit'] < 1:
       appendme['profit'] = 0
     ret.append(appendme)
-  return ret
+  return {'ranking': ret, 'count': count, 'page': page}
 
 def autocomplete(query, limit):
   query = query.replace('+', ' ').lower()

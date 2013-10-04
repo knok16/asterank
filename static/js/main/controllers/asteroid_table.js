@@ -4,7 +4,8 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
   var DESC_ORDER = $scope.DESC_ORDER = '-1';
   var UNDEF_ORDER = $scope.UNDEF_ORDER = '0';
   var POSSIBLE_ORDERS = $scope.POSSIBLE_ORDERS = [UNDEF_ORDER, ASC_ORDER, DESC_ORDER];
-  var MAX_COLUMNS_FOR_SORTING = 3;
+  //TODO set to 1 while server doesn't work correct for several fields
+  var MAX_COLUMNS_FOR_SORTING = 1;
   var POSSIBLE_LIMITS = $scope.POSSIBLE_LIMITS = [10, 50, 100, 300, 500];
   //TODO fill this config
   var POSSIBLE_COLUMNS = $scope.POSSIBLE_COLUMNS = [
@@ -17,7 +18,7 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
 //    },
     {
       title: 'Name',
-      template: '[[asteroid.name]]',
+      template: '[[asteroid.name || "-"]]',
       field: 'name',
       sortable: true,
       searchable: true
@@ -94,6 +95,7 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
 
   $scope.requestParams = {
     sortBy: [],
+    searchCriteria: {},
     page: 1,
     limit: POSSIBLE_LIMITS[0]
   };
@@ -114,6 +116,7 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
       $scope.columns.splice(index, 1);
       column.selected = false;
       column.sortDir = UNDEF_ORDER;
+      delete $scope.requestParams.searchCriteria[column.field];
       index = $scope.requestParams.sortBy.indexOf(column);
       if (index>=0)
         $scope.requestParams.sortBy.splice(index, 0);
@@ -144,12 +147,17 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
         params: {
           limit: $scope.requestParams.limit,
           page: $scope.requestParams.page,
+          searchCriteria: $scope.requestParams.searchCriteria,
           sortBy: sortBy
         },
         cache: true
       }).success(function (data) {
         $scope.loading = false;
-        $scope.rankings = data;
+        $scope.rankings = data.ranking;
+        $scope.requestParams.dataCount = data.count;
+        //TODO think about it and rework
+        $scope.requestParams.page = data.page || $scope.requestParams.page;
+        $scope.requestParams.pageCount = ((data.count / $scope.requestParams.limit) | 0) + (data.count % $scope.requestParams.limit ? 1 : 0);
         // publish to subscribers (incl. 3d view)
         pubsub.publish('NewAsteroidRanking', [$scope.rankings]);
         pubsub.publish('InitialRankingsLoaded');
@@ -165,7 +173,7 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
   };
 
   $scope.nextPage = function nextPage() {
-    $scope.requestParams.page++;
+    $scope.requestParams.page = Math.min($scope.requestParams.pageCount, $scope.requestParams.page + 1);
     $scope.refresh();
   };
 
@@ -196,6 +204,11 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
       column = sortBy.pop();
       column.sortDir = UNDEF_ORDER;
     }
+    $scope.refresh();
+  };
+
+  $scope.clearFilters = function clearFilters(){
+    $scope.requestParams.searchCriteria = {};
     $scope.refresh();
   };
 

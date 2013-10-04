@@ -1,26 +1,43 @@
 <div ng-controller="AsteroidTableCtrl" ng-cloak>
   <div class="navbar navbar-inverse">
-    <div class="navbar-inner">
-      <div ng-controller="AsteroidLookupCtrl" ng-init="Init()" class="navbar-form pull-left">
-        <span id="autocomplete-container" autocomplete-input="{{lookup_query}}" autocomplete></span>
-      </div>
+    <div class="btn-toolbar">
       <!-- CUSTOM INPUT -->
       {% include "blocks/custom_input.html" %}
-      <!-- MAIN TABLE -->
-      <!--TODO redesign this panel-->
-      <div class="btn-group pull-right">
+      <div class="btn-group">
+        <span class="btn btn-info active">Lines on page:</span>
         <select class="input-small btn btn-info" ng-options="x for x in POSSIBLE_LIMITS" ng-model="requestParams.limit"
                 ng-change="refresh()">
         </select>
-        <a class="btn btn-info" ng-class="{active:requestParams.page<=1}" ng-click="prevPage()"><i
-            class="icon-chevron-left icon-white"></i></a>
-        <span class="btn btn-info active" ng-bind="requestParams.page"></span>
-        <a class="btn btn-info" ng-click="nextPage()"><i class="icon-chevron-right icon-white"></i></a>
-        <button class="btn btn-info" ng-click="refresh()">
-          <i class="icon-repeat"></i>Refresh
+      </div>
+      <div class="btn-group">
+        <a class="btn btn-info" ng-class="{active:requestParams.page<=1}" ng-click="prevPage()">
+          <i class="icon-chevron-left icon-white"></i>
+        </a>
+        <span class="btn btn-info active"
+              ng-bind-template="[[requestParams.page]] / [[requestParams.pageCount]]"></span>
+        <a class="btn btn-info" ng-class="{active:requestParams.page>=requestParams.pageCount}" ng-click="nextPage()">
+          <i class="icon-chevron-right icon-white"></i>
+        </a>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-info" onclick="alert('UnsupportedThing...')">
+          <i class="icon-plus"></i> Add custom plot
         </button>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-info" ng-click="clearFilters()">
+          <i class="icon-remove"></i> Clear filters
+        </button>
+        <button class="btn btn-info" ng-click="refresh()">
+          <i class="icon-repeat"></i> Refresh
+        </button>
+      </div>
+      <div class="btn-group">
         <button class="btn btn-info" ng-click="showColumnSetting=true">
-          <i class="icon-wrench"></i>
+          <i class="icon-wrench"></i> Set up columns
+        </button>
+        <button class="btn btn-info" onclick="alert('UnsupportedThing...')">
+          <i class="icon-book"></i> Help
         </button>
       </div>
     </div>
@@ -33,6 +50,16 @@
           <span bind-template="column.title"></span>
           <i ng-show="column.sortDir==ASC_ORDER" class="icon-chevron-up icon-white"></i>
           <i ng-show="column.sortDir==DESC_ORDER" class="icon-chevron-down icon-white"></i>
+        </th>
+      </tr>
+      <tr>
+        <th ng-repeat="column in columns">
+          <!--TODO autocomplete-->
+          <!--TODO delete style-->
+          <form class="form-inline" ng-submit="refresh()" style="margin-bottom: 0">
+            <input type="text" ng-model="requestParams.searchCriteria[column.field]" class="input-small"
+                   ng-submit="refresh()">
+          </form>
         </th>
       </tr>
       </thead>
@@ -77,4 +104,5 @@
       </ul>
     </div>
   </div>
+  <!--TODO add window with help about filtering and sorting-->
 </div>
