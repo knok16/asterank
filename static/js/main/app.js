@@ -1,4 +1,4 @@
-(function() {
+(function () {
   'use strict';
 
   function sizeContainers() {
@@ -21,46 +21,52 @@
     $('#webgl-container').height(bch).width(ww);
 
     $ls.width(ww * .3);
-    $rs.width(ww - $ls.width()-75);
+    $rs.width(ww - $ls.width() - 75);
     $rs.height(tch);
     $ls.height(tch);
     $('#results-table-container').height($ls.height() - 15);
   }
+
   sizeContainers();
 
   $(window).on('resize', sizeContainers);
 
   var mod = angular.module('AsterankApp', ['ui.bootstrap', 'utils'])
-    .config(function($interpolateProvider) {
-        $interpolateProvider.startSymbol('[[').endSymbol(']]');
+    .config(function ($interpolateProvider) {
+      $interpolateProvider.startSymbol('[[').endSymbol(']]');
     });
 
-  mod.directive('autocomplete', function($timeout) {
+  mod.directive('autocomplete', function () {
     return {
       restrict: 'A',
-      link: function($scope, element, attrs) {
-        if (!$scope.$eval(attrs.autocomplete))return;
-        var field = $scope.$eval(attrs.param);
-        $(element).autocomplete({
-          width: '200px',
-          noCache: true, //TODO delete this
-          minChars: 2, //TODO think about it
-          params: {
-//            collection: 'asteriods', //TODO
-            field: field
-          },
+      require: '?ngModel',
+      link: function ($scope, element, attrs, ngModel) {
+        var $element = $(element);
+        //$element.autocomplete('destroy');
+        var config = $scope.$eval(attrs.autocomplete);
+
+        if (!config)
+          return;
+
+        var onSelect = config.onSelect;
+        delete config['onSelect'];
+
+        var autocompleteConfig = {
           serviceUrl: '/api/autocomplete',
-          paramName: 'query',
-          transformResult: function(resp) {
-            return $.map(resp, function(item) {
-              return {value: item, data: item};
-            });
-          },
-          onSelect: function(suggestion) {
-            //$scope.refresh(); TODO
+          onSelect: function (suggestion) {
+            if (ngModel)
+              ngModel.$setViewValue(suggestion.value);
+            if (attrs.onSelect)
+              $scope.$eval(attrs.onSelect);
+            if (angular.isFunction(onSelect))
+              onSelect();//TODO maybe apply or call
           }
-          //appendTo: '#asteroid-lookup-suggestions'
-        });
+        };
+        angular.extend(autocompleteConfig, config);
+
+        //angular.extend(autocompleteConfig, config);
+
+        $element.autocomplete(autocompleteConfig);
       }
     };
   });

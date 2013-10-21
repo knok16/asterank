@@ -22,7 +22,13 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
       field: 'name',
       sortable: true,
       searchable: true,
-      autocomplete: true
+      autocomplete: {
+        minChars: 3,
+        params:{
+          field:'name'
+        },
+        transformResult: angular.identity
+      }
     },
     {
       title: 'Prov des',
@@ -30,7 +36,13 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
       field: 'prov_des',
       sortable: true,
       searchable: true,
-      autocomplete: true
+      autocomplete: {
+        minChars: 2,
+        params:{
+          field:'prov_des'
+        },
+        transformResult: angular.identity
+      }
     },
     {
       title: 'Type',
@@ -87,7 +99,13 @@ function AsteroidTableCtrl($scope, $http, pubsub) {
       field: 'class',
       sortable: true,
       searchable: true,
-      autocomplete: true
+      autocomplete: {
+        minChars: 0,
+        params:{
+          field:'class'
+        },
+        transformResult: angular.identity
+      }
     }
   ];
 

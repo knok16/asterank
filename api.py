@@ -37,7 +37,7 @@ FIELD_ALIASES = {
 MAX_COLUMNS_FOR_SORTING = 1
 
 def prepare_like_criteria(query):
-  return {'$regex': query}
+  return re.compile(query, re.IGNORECASE)
 
 def parse_number(str):
   # match
@@ -124,7 +124,7 @@ def rankings(search_criteria, order_by, limit, page, orbits_only=False):
   t = asteroids.find(search_criteria, fields)
   if (order_by):
     sortCriteria = []
-    for val in reversed(order_by):
+    for val in order_by:
       sortCriteria.append((val[u'field'], int(val[u'dir'])))
     t = t.sort(sortCriteria)
   count = t.count()
@@ -151,7 +151,7 @@ def autocomplete(field, query, limit):
   # TODO think about it
   query = query.replace('+', ' ').lower()
   regx = re.compile(query, re.IGNORECASE)
-  ret = asteroids.find({field: {'$regex': regx}}, {field: True}).distinct(field)[:limit]
+  ret = asteroids.find({field: regx}, {field: True}).distinct(field)[:limit]
   # this sorting is not quite exact, as it penalizes asteroids with
   # long prefix numbers.  But it's close enough.
   #return sorted(ret, key=lambda x: x['full_name'].lower().find(query))[:limit]

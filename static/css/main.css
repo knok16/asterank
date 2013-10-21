@@ -219,3 +219,12 @@ code {
   max-height: 490px;
 }
 
+.column-setting-modal ul {
+    list-style-type:none;
+}
+
+.column-setting-modal a {
+    text-decoration: none;
+    width: 20px;
+    height: 20px;
+}

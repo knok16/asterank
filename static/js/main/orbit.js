@@ -110,6 +110,7 @@ window.OrbitDiagram = (function() {
   }
 
   OrbitDiagram.prototype.plotEarth = function() {
+    //this.plotOrbit(semimajor axis, eccentricity
     this.plotOrbit(1.00000011, 0.01671022, 102.93768193, 'cyan');
   }
 

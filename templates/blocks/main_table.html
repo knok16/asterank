@@ -58,7 +58,7 @@
           <!--TODO delete style-->
           <form class="form-inline" ng-submit="refresh()" style="margin-bottom: 0">
             <input type="text" ng-model="requestParams.searchCriteria[column.field]" class="input-small"
-                   ng-submit="refresh()" autocomplete="column.autocomplete" param="column.field">
+                   ng-submit="refresh()" autocomplete="column.autocomplete" on-select="refresh()">
           </form>
         </th>
       </tr>
